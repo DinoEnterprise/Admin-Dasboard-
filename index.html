@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - Bulan Chat</title>
+<style>
+body{margin:0;padding:0;font-family:sans-serif;background:#111;color:#fff;display:flex;height:100vh;overflow:hidden;}
+#userList{width:220px;background:#222;overflow-y:auto;padding:10px;border-right:1px solid #333;}
+#userList div{padding:8px 10px;margin-bottom:5px;background:#333;border-radius:8px;cursor:pointer;transition:all 0.2s;}
+#userList div:hover{background:#444;}
+#userList div.active{background:#2563eb;}
+
+#chatArea{flex:1;display:flex;flex-direction:column;}
+#chatContainer{flex:1;overflow-y:auto;padding:10px;background:#111;}
+.chat-bubble{padding:10px 14px;border-radius:20px;margin-bottom:8px;max-width:70%;word-wrap:break-word;}
+.userBubble{background:#2563eb;align-self:flex-start;color:#fff;}
+.adminBubble{background:#444;align-self:flex-end;color:#fff;}
+#inputArea{display:flex;padding:10px;gap:8px;background:#222;border-top:1px solid #333;}
+#inputArea input{flex:1;padding:8px;border-radius:15px;border:none;outline:none;font-size:0.95rem;}
+#inputArea button{padding:8px 12px;border-radius:12px;border:none;background:#2563eb;color:#fff;cursor:pointer;transition:all 0.2s;}
+#inputArea button:hover{background:#1e40af;}
+</style>
+</head>
+<body>
+
+<div id="userList"></div>
+
+<div id="chatArea">
+  <div id="chatContainer"></div>
+  <div id="inputArea">
+    <input type="text" id="replyInput" placeholder="Ketik balasan...">
+    <button onclick="sendReply()">Kirim</button>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// Konfigurasi Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyAc_-F3iHn3gdpl2mqwT9uGgwL2pSipLW4",
+  authDomain: "csbulan-997ea.firebaseapp.com",
+  databaseURL: "https://csbulan-997ea-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "csbulan-997ea",
+  storageBucket: "csbulan-997ea.firebasestorage.app",
+  messagingSenderId: "548129208386",
+  appId: "1:548129208386:web:481ba552040813a39195db"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let chatKey = null;
+const userListDiv = document.getElementById('userList');
+const chatContainer = document.getElementById('chatContainer');
+
+// Simpan user yang sudah tampil di sidebar
+let userKeys = {};
+
+// --- DAFTAR USER ---
+db.ref('chats').on('child_added', snapshot=>{
+  const key = snapshot.key;
+  if(userKeys[key]) return; // sudah ada
+  userKeys[key] = true;
+  
+  const div = document.createElement('div');
+  div.innerText = "User: " + key;
+  div.onclick = ()=> selectChat(key, div);
+  userListDiv.appendChild(div);
+});
+
+// --- PILIH CHAT ---
+function selectChat(key, divElement){
+  chatKey = key;
+
+  // Highlight aktif
+  Array.from(userListDiv.children).forEach(d=>d.classList.remove('active'));
+  divElement.classList.add('active');
+
+  chatContainer.innerHTML = '';
+  db.ref('chats').child(key).off(); // stop listener lama
+  db.ref('chats').child(key).on('child_added', snap=>{
+    const data = snap.val();
+    const bubble = document.createElement('div');
+    bubble.classList.add('chat-bubble', data.type==='user'?'userBubble':'adminBubble');
+    bubble.innerText = data.message;
+    chatContainer.appendChild(bubble);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Notifikasi visual jika chat user baru dan bukan sedang aktif
+    if(key !== chatKey && data.type==='user'){
+      divElement.style.background = '#f59e0b'; // kuning notif
+      setTimeout(()=>{divElement.style.background = '';},2000);
+    }
+  });
+}
+
+// --- KIRIM BALASAN ADMIN ---
+function sendReply(){
+  if(!chatKey) return;
+  const msg = document.getElementById('replyInput').value.trim();
+  if(!msg) return;
+  db.ref('chats').child(chatKey).push({message:msg,type:'admin',timestamp:Date.now()});
+  document.getElementById('replyInput').value='';
+}
+</script>
+
+</body>
+</html>
