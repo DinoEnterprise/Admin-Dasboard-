@@ -22,6 +22,8 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
 .userBubble{background:#2563eb;color:#fff;align-self:flex-start;}
 .adminBubble{background:#444;color:#fff;align-self:flex-end;}
 .jobBubble{background:#3a3a3a;color:#fff;align-self:flex-start;border-left:3px solid #2563eb;padding-left:10px;}
+.lyricsBox{background:#222;padding:8px;margin:5px 0;border-radius:8px;max-height:120px;overflow-y:auto;white-space:pre-line;font-size:0.95rem;}
+.copyBtn{margin-top:4px;padding:4px 8px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:0.85rem;}
 #inputArea{display:flex;padding:10px;gap:8px;background:#1b1b1b;}
 #inputArea input{flex:1;padding:8px;border-radius:12px;border:none;outline:none;}
 #inputArea button{padding:8px 14px;border-radius:12px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
@@ -53,35 +55,32 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
   </div>
 </div>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
 // Firebase config PX Music V5
 const firebaseConfig = {
   apiKey: "AIzaSyAUoAi_LxYe-a4lgVqbYT2Aj9D0ITIkL2s",
   authDomain: "texttomusic-6ce7a.firebaseapp.com",
-  databaseURL: "https://texttomusic-6ce7a-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "texttomusic-6ce7a",
   storageBucket: "texttomusic-6ce7a.firebasestorage.app",
   messagingSenderId: "287856697988",
   appId: "1:287856697988:web:b87bf5c6632501d2b098d1"
 };
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db = firebase.firestore();
 
 let selectedUser = null;
 const chatContainer = document.getElementById('chatContainer');
 const userListDiv = document.getElementById('userList');
 const chatHeader = document.getElementById('chatHeader');
-let messageRefs = {};
-let hiddenMessages = [];
+let messageUnsub = null;
 let usersData = {};
 
 // Toggle sidebar mobile
-document.getElementById('toggleSidebar').addEventListener('click', ()=>sidebar.classList.toggle('collapsed'));
 const sidebar = document.getElementById('sidebar');
+document.getElementById('toggleSidebar').addEventListener('click', ()=>sidebar.classList.toggle('collapsed'));
 
 // Add user to sidebar
 function addUserToList(userId){
@@ -102,8 +101,8 @@ function addUserToList(userId){
 // Delete user
 function deleteUser(userId){
   if(confirm(`Hapus user ${userId} beserta semua job & chat?`)){
-    db.ref('jobs/'+userId).remove();
-    db.ref('chats/'+userId).remove();
+    db.collection('jobs').doc(userId).delete();
+    db.collection('chats').doc(userId).delete();
     const div = document.getElementById('user-'+userId);
     if(div) div.remove();
     if(selectedUser === userId){
@@ -118,19 +117,21 @@ function deleteUser(userId){
 // Reset hak generate user
 function resetGenerate(userId){
   if(confirm(`Reset hak generate untuk ${userId}?`)){
-    db.ref('users/'+userId+'/hasGenerated').set(false);
+    db.collection('users').doc(userId).set({hasGenerated:false},{merge:true});
     alert(`${userId} sekarang bisa generate lagi.`);
   }
 }
 
 // Fetch users dari jobs
-db.ref('jobs').once('value', snapshot=>{
-  snapshot.forEach(s=>addUserToList(s.key));
+db.collection('jobs').get().then(snapshot=>{
+  snapshot.forEach(doc=> addUserToList(doc.id));
 });
 
-// Listen untuk user baru
-db.ref('jobs').on('child_added', snapshot=>{
-  addUserToList(snapshot.key);
+// Listen user baru realtime
+db.collection('jobs').onSnapshot(snapshot=>{
+  snapshot.docChanges().forEach(change=>{
+    if(change.type === 'added') addUserToList(change.doc.id);
+  });
 });
 
 // Search user
@@ -149,45 +150,42 @@ function selectUser(userId){
   usersData[userId].classList.remove('newMsg');
 
   // Tampilkan semua job user
-  db.ref('jobs/'+userId).once('value', snapshot=>{
-    snapshot.forEach(job=>{
-      const data = job.val();
+  db.collection('jobs').doc(userId).get().then(doc=>{
+    if(doc.exists){
+      const data = doc.data();
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble jobBubble';
       bubble.innerHTML = `
         <b>Judul:</b> ${data.judul || '-'}<br>
         <b>Style:</b> ${data.style || '-'}<br>
         <b>Gender:</b> ${data.gender || '-'}<br>
-        <b>Status:</b> ${data.status || 'Memproses...'}
+        <b>Status:</b> ${data.status || 'Memproses...'}<br>
+        <b>Job ID:</b> ${data.jobId || '-'}<br>
+        <b>Lirik:</b>
+        <div class="lyricsBox" id="lyrics-${data.jobId}">${data.lyrics || '-'}</div>
+        <button class="copyBtn" onclick="copyLyrics('${data.jobId}')">Copy Lirik</button>
       `;
       chatContainer.appendChild(bubble);
-    });
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  });
-
-  // Listen chat user
-  if(messageRefs[userId]) messageRefs[userId].off();
-  const ref = db.ref('chats/'+userId);
-  messageRefs[userId] = ref;
-  ref.on('child_added', snapshot=>{
-    const data = snapshot.val();
-    const id = snapshot.key;
-    if(!data || hiddenMessages.includes(id)) return;
-
-    const div = document.createElement('div');
-    div.classList.add('chat-bubble', data.type==='user'?'userBubble':'adminBubble');
-    div.innerText = data.message;
-
-    div.addEventListener('dblclick', ()=>{ hiddenMessages.push(id); div.remove(); });
-
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    if(data.type==='user' && selectedUser !== userId){
-      alert(`Pesan baru dari ${userId}: ${data.message}`);
-      usersData[userId].classList.add('newMsg');
     }
+    chatContainer.scrollTop = chatContainer.scrollHeight;
   });
+
+  // Listen chat user realtime
+  if(messageUnsub) messageUnsub();
+  messageUnsub = db.collection('chats').doc(userId).collection('messages')
+    .orderBy('timestamp','asc')
+    .onSnapshot(snapshot=>{
+      snapshot.docChanges().forEach(change=>{
+        if(change.type==='added'){
+          const data = change.doc.data();
+          const div = document.createElement('div');
+          div.classList.add('chat-bubble', data.type==='user'?'userBubble':'adminBubble');
+          div.innerText = data.message;
+          chatContainer.appendChild(div);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      });
+    });
 }
 
 // Send reply
@@ -195,8 +193,20 @@ function sendReply(){
   if(!selectedUser) return;
   const msg = document.getElementById('replyInput').value.trim();
   if(!msg) return;
-  db.ref('chats/'+selectedUser).push({message:msg,type:'admin',timestamp:Date.now()});
+  db.collection('chats').doc(selectedUser).collection('messages').add({
+    message: msg,
+    type: 'admin',
+    timestamp: Date.now()
+  });
   document.getElementById('replyInput').value='';
+}
+
+// Copy lirik
+function copyLyrics(jobId){
+  const lyricsDiv = document.getElementById(`lyrics-${jobId}`);
+  if(lyricsDiv){
+    navigator.clipboard.writeText(lyricsDiv.innerText).then(()=> alert('Lirik berhasil di-copy!'));
+  }
 }
 </script>
 
