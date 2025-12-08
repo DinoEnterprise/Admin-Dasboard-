@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard - Bulan Chat</title>
+<title>Admin Dashboard - Web2App Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Outfit",sans-serif;}
@@ -62,7 +62,7 @@ const firebaseConfig = {
   authDomain: "csbulan-997ea.firebaseapp.com",
   databaseURL: "https://csbulan-997ea-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "csbulan-997ea",
-  storageBucket: "csbulan-997ea.firebasestorage.app",
+  storageBucket: "csbulan-997ea.appspot.com",
   messagingSenderId: "548129208386",
   appId: "1:548129208386:web:481ba552040813a39195db"
 };
@@ -76,11 +76,6 @@ const chatHeader = document.getElementById('chatHeader');
 let messageRefs = {};
 let hiddenMessages = [];
 let usersData = {};
-
-// Browser notification
-if(Notification.permission !== "granted"){
-  Notification.requestPermission();
-}
 
 // Toggle sidebar mobile
 const toggleBtn = document.getElementById('toggleSidebar');
@@ -158,9 +153,9 @@ function selectUser(userId){
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    // notifikasi
-    if(data.type==='user' && selectedUser !== userId && Notification.permission==="granted"){
-      new Notification(`Pesan baru dari ${userId}`, { body:data.message, icon:"https://i.imgur.com/nQNpS3C.gif" });
+    // notifikasi in-app
+    if(data.type==='user' && selectedUser !== userId){
+      alert(`Pesan baru dari ${userId}: ${data.message}`);
       usersData[userId].classList.add('newMsg');
     }
   });
