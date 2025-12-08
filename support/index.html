@@ -69,9 +69,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* === Aktifkan izin notif untuk Web2App === */
-Notification.requestPermission();
-
 let selectedUser = null;
 const chatContainer = document.getElementById('chatContainer');
 const userListDiv = document.getElementById('userList');
@@ -114,13 +111,17 @@ function deleteUser(userId){
   }
 }
 
-// Fetch all users
-db.ref('chats').once('value', snapshot=>{
-  snapshot.forEach(s=>addUserToList(s.key));
-});
+// Fetch all users - Web2App friendly
+db.ref('chats').once('value')
+  .then(snapshot=>{
+    snapshot.forEach(s=>addUserToList(s.key));
+  })
+  .catch(err=>console.error('Firebase fetch error:', err));
 
 // Listen for new users
-db.ref('chats').on('child_added', snapshot=>addUserToList(snapshot.key));
+db.ref('chats').on('child_added', snapshot=>{
+  addUserToList(snapshot.key);
+});
 
 // Search user
 document.getElementById('searchUser').addEventListener('input', e=>{
@@ -155,19 +156,6 @@ function selectUser(userId){
 
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    /* === NOTIFIKASI UNTUK WEB2APP === */
-    if(data.type==='user' && selectedUser !== userId){
-
-      if(Notification.permission === "granted"){
-        new Notification("Pesan baru", {
-          body: data.message
-        });
-      }
-
-      alert(`Pesan baru dari ${userId}: ${data.message}`);
-      usersData[userId].classList.add('newMsg');
-    }
   });
 }
 
