@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard - PX Music V5 Chat</title>
+<title>Admin Dashboard - PX Music V5</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Outfit",sans-serif;}
 body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
-#sidebar{width:280px;background:#111;display:flex;flex-direction:column;transition:0.3s;}
+#sidebar{width:300px;background:#111;display:flex;flex-direction:column;transition:0.3s;}
 #sidebar.collapsed{width:0;overflow:hidden;}
 #sidebar input{margin:10px;padding:8px;border-radius:10px;border:none;outline:none;}
 #userList{flex:1;overflow-y:auto;}
@@ -21,6 +21,7 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
 .chat-bubble{padding:10px 14px;border-radius:16px;max-width:70%;line-height:1.4;}
 .userBubble{background:#2563eb;color:#fff;align-self:flex-start;}
 .adminBubble{background:#444;color:#fff;align-self:flex-end;}
+.jobBubble{background:#3a3a3a;color:#fff;align-self:flex-start;border-left:3px solid #2563eb;padding-left:10px;}
 #inputArea{display:flex;padding:10px;gap:8px;background:#1b1b1b;}
 #inputArea input{flex:1;padding:8px;border-radius:12px;border:none;outline:none;}
 #inputArea button{padding:8px 14px;border-radius:12px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
@@ -44,7 +45,7 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
 </div>
 
 <div id="chatArea">
-  <div id="chatHeader">Pilih user untuk chat</div>
+  <div id="chatHeader">Pilih user untuk lihat job & chat</div>
   <div id="chatContainer" class="scrollbar"></div>
   <div id="inputArea">
     <input type="text" id="replyInput" placeholder="Ketik balasan...">
@@ -79,24 +80,20 @@ let hiddenMessages = [];
 let usersData = {};
 
 // Toggle sidebar mobile
-const toggleBtn = document.getElementById('toggleSidebar');
+document.getElementById('toggleSidebar').addEventListener('click', ()=>sidebar.classList.toggle('collapsed'));
 const sidebar = document.getElementById('sidebar');
-toggleBtn.addEventListener('click',()=>sidebar.classList.toggle('collapsed'));
 
 // Add user to sidebar
 function addUserToList(userId){
   if(document.getElementById('user-'+userId)) return;
-
   const div = document.createElement('div');
   div.id = 'user-'+userId;
   div.classList.add('userItem');
-
   div.innerHTML = `<span>${userId}</span>
     <div>
       <button onclick="resetGenerate('${userId}');event.stopPropagation()">🔄</button>
       <button onclick="deleteUser('${userId}');event.stopPropagation()">🗑️</button>
     </div>`;
-
   div.onclick = ()=>selectUser(userId);
   userListDiv.appendChild(div);
   usersData[userId] = div;
@@ -104,15 +101,15 @@ function addUserToList(userId){
 
 // Delete user
 function deleteUser(userId){
-  if(confirm(`Hapus user ${userId} beserta semua chatnya?`)){
+  if(confirm(`Hapus user ${userId} beserta semua job & chat?`)){
+    db.ref('jobs/'+userId).remove();
     db.ref('chats/'+userId).remove();
-    db.ref('users/'+userId).remove();
     const div = document.getElementById('user-'+userId);
     if(div) div.remove();
     if(selectedUser === userId){
       selectedUser = null;
       chatContainer.innerHTML = '';
-      chatHeader.innerText = 'Pilih user untuk chat';
+      chatHeader.innerText = 'Pilih user untuk lihat job & chat';
     }
     delete usersData[userId];
   }
@@ -126,13 +123,15 @@ function resetGenerate(userId){
   }
 }
 
-// Fetch all users
-db.ref('chats').once('value', snapshot=>{
+// Fetch users dari jobs
+db.ref('jobs').once('value', snapshot=>{
   snapshot.forEach(s=>addUserToList(s.key));
 });
 
-// Listen for new users
-db.ref('chats').on('child_added', snapshot=>addUserToList(snapshot.key));
+// Listen untuk user baru
+db.ref('jobs').on('child_added', snapshot=>{
+  addUserToList(snapshot.key);
+});
 
 // Search user
 document.getElementById('searchUser').addEventListener('input', e=>{
@@ -142,17 +141,34 @@ document.getElementById('searchUser').addEventListener('input', e=>{
   }
 });
 
-// Select user & show chat
+// Select user & tampilkan job + chat
 function selectUser(userId){
   selectedUser = userId;
-  chatHeader.innerText = `Chat dengan: ${userId}`;
+  chatHeader.innerText = `User: ${userId}`;
   chatContainer.innerHTML = '';
   usersData[userId].classList.remove('newMsg');
 
+  // Tampilkan semua job user
+  db.ref('jobs/'+userId).once('value', snapshot=>{
+    snapshot.forEach(job=>{
+      const data = job.val();
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble jobBubble';
+      bubble.innerHTML = `
+        <b>Judul:</b> ${data.judul || '-'}<br>
+        <b>Style:</b> ${data.style || '-'}<br>
+        <b>Gender:</b> ${data.gender || '-'}<br>
+        <b>Status:</b> ${data.status || 'Memproses...'}
+      `;
+      chatContainer.appendChild(bubble);
+    });
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  });
+
+  // Listen chat user
   if(messageRefs[userId]) messageRefs[userId].off();
   const ref = db.ref('chats/'+userId);
   messageRefs[userId] = ref;
-
   ref.on('child_added', snapshot=>{
     const data = snapshot.val();
     const id = snapshot.key;
@@ -162,13 +178,11 @@ function selectUser(userId){
     div.classList.add('chat-bubble', data.type==='user'?'userBubble':'adminBubble');
     div.innerText = data.message;
 
-    // hapus pesan admin-side dengan double click
     div.addEventListener('dblclick', ()=>{ hiddenMessages.push(id); div.remove(); });
 
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    // notifikasi in-app
     if(data.type==='user' && selectedUser !== userId){
       alert(`Pesan baru dari ${userId}: ${data.message}`);
       usersData[userId].classList.add('newMsg');
