@@ -24,8 +24,8 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
 .jobBubble{background:#3a3a3a;color:#fff;align-self:flex-start;border-left:3px solid #2563eb;padding-left:10px;}
 .lyricsBox{background:#222;padding:8px;margin:5px 0;border-radius:8px;max-height:120px;overflow-y:auto;white-space:pre-line;font-size:0.95rem;}
 .copyBtn{margin-top:4px;padding:4px 8px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:0.85rem;}
-#inputArea{display:flex;padding:10px;gap:8px;background:#1b1b1b;}
-#inputArea input{flex:1;padding:8px;border-radius:12px;border:none;outline:none;}
+#inputArea{display:flex;padding:10px;gap:8px;background:#1b1b1b;flex-wrap:wrap;}
+#inputArea input, #inputArea select{flex:1 1 150px;padding:8px;border-radius:12px;border:none;outline:none;}
 #inputArea button{padding:8px 14px;border-radius:12px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
 .scrollbar::-webkit-scrollbar{width:8px;}
 .scrollbar::-webkit-scrollbar-thumb{background:#333;border-radius:4px;}
@@ -49,8 +49,11 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
   <div id="chatHeader">Pilih user untuk lihat job & chat</div>
   <div id="chatContainer" class="scrollbar"></div>
   <div id="inputArea">
-    <input type="text" id="replyInput" placeholder="Ketik balasan...">
-    <button onclick="sendReply()">Kirim</button>
+    <input type="text" id="judulInput" placeholder="Judul Lagu">
+    <input type="text" id="modelInput" placeholder="Model PX Music">
+    <input type="number" id="kreditInput" placeholder="Sisa Kredit">
+    <input type="text" id="linkInput" placeholder="Link GDrive">
+    <button onclick="sendMusicLink()">Kirim ke User</button>
   </div>
 </div>
 
@@ -174,16 +177,16 @@ function selectUser(userId){
           const data = change.doc.data();
           const div = document.createElement('div');
           div.classList.add('chat-bubble', data.type==='user'?'userBubble':'adminBubble');
-          div.innerText = data.message;
+          div.innerHTML = data.message.replace(/\n/g,'<br>');  // support newline
           chatContainer.appendChild(div);
           chatContainer.scrollTop = chatContainer.scrollHeight;
 
-          // Double-tap untuk hapus permanen
+          // Double-click untuk hapus chat permanen
           div.addEventListener('dblclick', ()=>{
             if(confirm('Hapus pesan ini permanen?')){
               db.collection('chats').doc(userId).collection('messages').doc(change.doc.id).delete()
               .then(()=> div.remove())
-              .catch(err=>console.error(err));
+              .catch(err=> console.error(err));
             }
           });
         }
@@ -191,17 +194,36 @@ function selectUser(userId){
     });
 }
 
-// ===== Send reply =====
-function sendReply(){
-  if(!selectedUser) return;
-  const msg = document.getElementById('replyInput').value.trim();
-  if(!msg) return;
+// ===== Send Music Link =====
+function sendMusicLink(){
+  if(!selectedUser) return alert("Pilih user dulu!");
+  const judul = document.getElementById('judulInput').value.trim();
+  const model = document.getElementById('modelInput').value.trim();
+  const kredit = document.getElementById('kreditInput').value.trim();
+  const link = document.getElementById('linkInput').value.trim();
+
+  if(!judul || !model || !kredit || !link) return alert("Semua field wajib diisi!");
+
+  const msg = `╭────────────────────────<br>
+┊ 🎵 Musik Selesai Dibuat<br>
+┊<br>
+┊ ・ Judul: ${judul}<br>
+┊ ・ Model: ${model}<br>
+┊ ・ Kredit: ${kredit}<br>
+╰────────────────────────<br><br>
+🔗 Link: <a href="${link}" target="_blank">${link}</a>`;
+
   db.collection('chats').doc(selectedUser).collection('messages').add({
     message: msg,
     type: 'admin',
     timestamp: Date.now()
   });
-  document.getElementById('replyInput').value='';
+
+  document.getElementById('judulInput').value='';
+  document.getElementById('modelInput').value='';
+  document.getElementById('kreditInput').value='';
+  document.getElementById('linkInput').value='';
+  alert("Link musik berhasil dikirim!");
 }
 
 // ===== Copy lirik =====
