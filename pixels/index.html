@@ -82,7 +82,7 @@ let usersData = {};
 const sidebar = document.getElementById('sidebar');
 document.getElementById('toggleSidebar').addEventListener('click', ()=>sidebar.classList.toggle('collapsed'));
 
-// ===== User list =====
+// ===== Tambah user ke list =====
 function addUserToList(userId){
   if(document.getElementById('user-'+userId)) return;
   const div = document.createElement('div');
@@ -91,22 +91,11 @@ function addUserToList(userId){
   div.innerHTML = `<span>${userId}</span>
     <div>
       <button onclick="resetGenerate('${userId}');event.stopPropagation()">🔄</button>
-      <button onclick="deleteUser('${userId}');event.stopPropagation()">🗑️</button>
+      <button onclick="deleteUserCompletely('${userId}');event.stopPropagation()">🗑️</button>
     </div>`;
   div.onclick = ()=>selectUser(userId);
   userListDiv.appendChild(div);
   usersData[userId] = div;
-}
-
-// ===== Delete user =====
-function deleteUser(userId){
-  if(confirm(`Hapus user ${userId} beserta semua job & chat?`)){
-    db.collection('jobs').doc(userId).delete();
-    db.collection('chats').doc(userId).delete();
-    const div = document.getElementById('user-'+userId); if(div) div.remove();
-    if(selectedUser === userId){ selectedUser=null; chatContainer.innerHTML=''; chatHeader.innerText='Pilih user untuk lihat job & chat'; }
-    delete usersData[userId];
-  }
 }
 
 // ===== Reset generate =====
@@ -228,6 +217,45 @@ function copyLyrics(jobId){
   const lyricsDiv = document.getElementById(`lyrics-${jobId}`);
   if(lyricsDiv){
     navigator.clipboard.writeText(lyricsDiv.innerText).then(()=> alert('Lirik berhasil di-copy!'));
+  }
+}
+
+// ===== Hapus user + job + chat lengkap =====
+async function deleteUserCompletely(userId){
+  if(!confirm(`Hapus user ${userId} beserta semua job & chat?`)) return;
+
+  try {
+    // Hapus semua pesan di subcollection messages
+    const messagesRef = db.collection('chats').doc(userId).collection('messages');
+    const snapshot = await messagesRef.get();
+    const batch = db.batch();
+    snapshot.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    // Hapus dokumen chat utama
+    await db.collection('chats').doc(userId).delete();
+
+    // Hapus dokumen job user
+    await db.collection('jobs').doc(userId).delete();
+
+    // Hapus user di sidebar
+    const div = document.getElementById('user-'+userId);
+    if(div) div.remove();
+
+    // Reset selected user jika yang dihapus sama
+    if(selectedUser === userId){
+      selectedUser = null;
+      chatContainer.innerHTML='';
+      chatHeader.innerText='Pilih user untuk lihat job & chat';
+    }
+
+    // Hapus data lokal
+    delete usersData[userId];
+
+    alert(`User ${userId} beserta semua job & chat berhasil dihapus!`);
+  } catch(err){
+    console.error(err);
+    alert("Terjadi kesalahan saat menghapus user.");
   }
 }
 </script>
