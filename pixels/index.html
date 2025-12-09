@@ -27,6 +27,7 @@ body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
 #inputArea{display:flex;padding:10px;gap:8px;background:#1b1b1b;flex-wrap:wrap;}
 #inputArea input, #inputArea select{flex:1 1 150px;padding:8px;border-radius:12px;border:none;outline:none;}
 #inputArea button{padding:8px 14px;border-radius:12px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
+.downloadBtn{display:inline-block;padding:6px 12px;background:#1e90ff;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-top:4px;}
 .scrollbar::-webkit-scrollbar{width:8px;}
 .scrollbar::-webkit-scrollbar-thumb{background:#333;border-radius:4px;}
 .scrollbar::-webkit-scrollbar-track{background:transparent;}
@@ -153,14 +154,11 @@ function selectUser(userId){
       const bubble = document.createElement('div');
       bubble.className='chat-bubble jobBubble';
       bubble.innerHTML=`
+        <b>Musik Selesai Dibuat</b><br><br>
         <b>Judul:</b> ${data.judul || '-'}<br>
-        <b>Style:</b> ${data.style || '-'}<br>
-        <b>Gender:</b> ${data.gender || '-'}<br>
-        <b>Status:</b> ${data.status || 'Memproses...'}<br>
-        <b>Job ID:</b> ${data.jobId || '-'}<br>
-        <b>Lirik:</b>
-        <div class="lyricsBox" id="lyrics-${data.jobId}">${data.lyrics || '-'}</div>
-        <button class="copyBtn" onclick="copyLyrics('${data.jobId}')">Copy Lirik</button>
+        <b>Model:</b> ${data.model || data.style || '-'}<br>
+        <b>Kredit:</b> ${data.kredit || '-'}<br>
+        <a href="${data.link || '#'}" target="_blank" class="downloadBtn">Download</a>
       `;
       chatContainer.appendChild(bubble);
     }
@@ -204,34 +202,30 @@ function sendMusicLink(){
 
   if(!judul || !model || !kredit || !link) return alert("Semua field wajib diisi!");
 
-  const msg = `╭────────────────────────<br>
-┊ 🎵 Musik Selesai Dibuat<br>
-┊<br>
-┊ ・ Judul: ${judul}<br>
-┊ ・ Model: ${model}<br>
-┊ ・ Kredit: ${kredit}<br>
-╰────────────────────────<br><br>
-🔗 Link: <a href="${link}" target="_blank">${link}</a>`;
-
   db.collection('chats').doc(selectedUser).collection('messages').add({
-    message: msg,
+    message: `<b>Musik Selesai Dibuat</b><br><br>
+<b>Judul:</b> ${judul}<br>
+<b>Model:</b> ${model}<br>
+<b>Kredit:</b> ${kredit}<br>
+<a href="${link}" target="_blank" class="downloadBtn">Download</a>`,
     type: 'admin',
     timestamp: Date.now()
   });
+
+  // Simpan di job user
+  db.collection('jobs').doc(selectedUser).set({
+    judul: judul,
+    model: model,
+    kredit: kredit,
+    link: link,
+    status: "Selesai"
+  }, {merge:true});
 
   document.getElementById('judulInput').value='';
   document.getElementById('modelInput').value='';
   document.getElementById('kreditInput').value='';
   document.getElementById('linkInput').value='';
   alert("Link musik berhasil dikirim!");
-}
-
-// ===== Copy lirik =====
-function copyLyrics(jobId){
-  const lyricsDiv = document.getElementById(`lyrics-${jobId}`);
-  if(lyricsDiv){
-    navigator.clipboard.writeText(lyricsDiv.innerText).then(()=> alert('Lirik berhasil di-copy!'));
-  }
 }
 </script>
 </body>
