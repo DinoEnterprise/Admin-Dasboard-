@@ -5,7 +5,7 @@
   <title>Send Dynotic Email</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 20px; }
-    input, select, button { width: 100%; padding: 8px; margin-bottom: 12px; box-sizing: border-box; }
+    input, select, textarea, button { width: 100%; padding: 8px; margin-bottom: 12px; box-sizing: border-box; }
     button { background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
     #preview { background: #fff; padding: 12px; max-width: 600px; margin-top: 20px; border: 1px solid #ddd; }
     #preview img { width: 100%; height: auto; display: block; margin-bottom: 12px; }
@@ -32,17 +32,7 @@
   </select>
 
   <label>Reason (if Rejected):</label>
-  <select id="reason_select" onchange="updatePreview()">
-    <option value="Copyright violation detected.">Copyright violation detected.</option>
-    <option value="Unauthorized sample usage.">Unauthorized sample usage.</option>
-    <option value="Remix too similar to original track.">Remix too similar to original track.</option>
-    <option value="EasySong license not obtained.">EasySong license not obtained.</option>
-    <option value="Cover / Corporate Art violates third-party rights.">Cover / Corporate Art violates third-party rights.</option>
-    <option value="Content violates platform rules.">Content violates platform rules.</option>
-    <option value="Track metadata invalid.">Track metadata invalid.</option>
-    <option value="Audio format / quality does not meet standards.">Audio format / quality does not meet standards.</option>
-    <option value="Track too similar to other releases.">Track too similar to other releases.</option>
-  </select>
+  <textarea id="reason_input" placeholder="Type rejection reason here..." rows="3"></textarea>
 
   <button onclick="sendEmail()">Send Email</button>
 
@@ -58,7 +48,7 @@
       const artist_name = document.getElementById("artist_name").value || 'Artist Name';
       const track_title = document.getElementById("track_title").value || 'Track Title';
       const status = document.getElementById("status").value;
-      const reason = document.getElementById("reason_select").value;
+      const reason = document.getElementById("reason_input").value;
 
       const isApproved = status === 'Approved';
       const opening_text = isApproved 
@@ -89,7 +79,7 @@
       const artist_name = document.getElementById("artist_name").value;
       const track_title = document.getElementById("track_title").value;
       const status = document.getElementById("status").value;
-      const reason = document.getElementById("reason_select").value;
+      const reason = document.getElementById("reason_input").value;
       const isApproved = status === 'Approved';
       const opening_text = isApproved 
         ? 'Congratulations! Your release has been approved.'
