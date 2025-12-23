@@ -1,263 +1,123 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard - PX Music V5</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:"Outfit",sans-serif;}
-body{display:flex;height:100vh;background:#0a0a0a;color:#fff;}
-#sidebar{width:300px;background:#111;display:flex;flex-direction:column;transition:0.3s;}
-#sidebar.collapsed{width:0;overflow:hidden;}
-#sidebar input{margin:10px;padding:8px;border-radius:10px;border:none;outline:none;}
-#userList{flex:1;overflow-y:auto;}
-.userItem{padding:10px 12px;border-bottom:1px solid #222;cursor:pointer;display:flex;justify-content:space-between;align-items:center;position:relative;}
-.userItem.newMsg{background:#1f1f1f;font-weight:600;}
-.userItem button{background:none;border:none;color:#f55;cursor:pointer;font-size:16px;margin-left:6px;}
-#chatArea{flex:1;display:flex;flex-direction:column;background:#121212;}
-#chatHeader{padding:12px;background:#1b1b1b;font-weight:600;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center;}
-#chatContainer{flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
-.chat-bubble{padding:10px 14px;border-radius:16px;max-width:70%;line-height:1.4;position:relative;cursor:pointer;}
-.userBubble{background:#2563eb;color:#fff;align-self:flex-start;}
-.adminBubble{background:#444;color:#fff;align-self:flex-end;}
-.jobBubble{background:#3a3a3a;color:#fff;align-self:flex-start;border-left:3px solid #2563eb;padding-left:10px;}
-.lyricsBox{background:#222;padding:8px;margin:5px 0;border-radius:8px;max-height:120px;overflow-y:auto;white-space:pre-line;font-size:0.95rem;}
-.copyBtn{margin-top:4px;padding:4px 8px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:0.85rem;}
-#inputArea{display:flex;padding:10px;gap:8px;background:#1b1b1b;flex-wrap:wrap;}
-#inputArea input, #inputArea select{flex:1 1 150px;padding:8px;border-radius:12px;border:none;outline:none;}
-#inputArea button{padding:8px 14px;border-radius:12px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
-.scrollbar::-webkit-scrollbar{width:8px;}
-.scrollbar::-webkit-scrollbar-thumb{background:#333;border-radius:4px;}
-.scrollbar::-webkit-scrollbar-track{background:transparent;}
-#toggleSidebar{display:none;position:absolute;top:10px;left:10px;background:#2563eb;border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;z-index:10;}
-@media(max-width:768px){
-  #sidebar{position:absolute;height:100%;z-index:5;}
-  #toggleSidebar{display:block;}
-}
-</style>
+  <meta charset="UTF-8">
+  <title>Send Dynotic Email</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 20px; }
+    input, select, button { width: 100%; padding: 8px; margin-bottom: 12px; box-sizing: border-box; }
+    button { background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    #preview { background: #fff; padding: 12px; max-width: 600px; margin-top: 20px; border: 1px solid #ddd; }
+    #preview img { width: 100%; height: auto; display: block; margin-bottom: 12px; }
+  </style>
 </head>
 <body>
-<button id="toggleSidebar">☰</button>
-<div id="sidebar">
-  <input type="text" id="searchUser" placeholder="Cari user...">
-  <div id="userList" class="scrollbar"></div>
-</div>
-<div id="chatArea">
-  <div id="chatHeader">Pilih user untuk lihat job & chat</div>
-  <div id="chatContainer" class="scrollbar"></div>
-  <div id="inputArea">
-    <input type="text" id="judulInput" placeholder="Judul Lagu">
-    <input type="text" id="modelInput" placeholder="Model PX Music">
-    <input type="number" id="kreditInput" placeholder="Sisa Kredit">
-    <input type="text" id="linkInput" placeholder="Link GDrive">
-    <button onclick="sendMusicLink()">Kirim ke User</button>
-  </div>
-</div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script>
-// ===== Firebase config =====
-const firebaseConfig = {
-  apiKey: "AIzaSyAUoAi_LxYe-a4lgVqbYT2Aj9D0ITIkL2s",
-  authDomain: "texttomusic-6ce7a.firebaseapp.com",
-  projectId: "texttomusic-6ce7a",
-  storageBucket: "texttomusic-6ce7a.firebasestorage.app",
-  messagingSenderId: "287856697988",
-  appId: "1:287856697988:web:b87bf5c6632501d2b098d1"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+  <h2>Send Dynotic Email</h2>
 
-// ===== Variables =====
-let selectedUser = null;
-const chatContainer = document.getElementById('chatContainer');
-const userListDiv = document.getElementById('userList');
-const chatHeader = document.getElementById('chatHeader');
-let messageUnsub = null;
-let usersData = {};
+  <!-- Form -->
+  <label>Recipient Email:</label>
+  <input type="email" id="to_email" placeholder="example@email.com">
 
-// ===== Sidebar toggle =====
-const sidebar = document.getElementById('sidebar');
-document.getElementById('toggleSidebar').addEventListener('click', ()=>sidebar.classList.toggle('collapsed'));
+  <label>Artist Name:</label>
+  <input type="text" id="artist_name" placeholder="Artist Name">
 
-// ===== Tambah user ke list =====
-function addUserToList(userId){
-  if(document.getElementById('user-'+userId)) return;
-  const div = document.createElement('div');
-  div.id = 'user-'+userId;
-  div.classList.add('userItem');
-  div.innerHTML = `<span>${userId}</span>
-    <div>
-      <button onclick="resetGenerate('${userId}');event.stopPropagation()">🔄</button>
-      <button onclick="deleteUserCompletely('${userId}');event.stopPropagation()">🗑️</button>
-    </div>`;
-  div.onclick = ()=>selectUser(userId);
-  userListDiv.appendChild(div);
-  usersData[userId] = div;
-}
+  <label>Track Title:</label>
+  <input type="text" id="track_title" placeholder="Track Title">
 
-// ===== Reset generate =====
-function resetGenerate(userId){
-  if(confirm(`Reset hak generate untuk ${userId}?`)){
-    db.collection('users').doc(userId).set({hasGenerated:false},{merge:true});
-    alert(`${userId} sekarang bisa generate lagi.`);
-  }
-}
+  <label>Status:</label>
+  <select id="status" onchange="updatePreview()">
+    <option value="Approved">Approved</option>
+    <option value="Rejected">Rejected</option>
+  </select>
 
-// ===== Fetch users =====
-db.collection('jobs').get().then(snapshot=>{
-  snapshot.forEach(doc=> addUserToList(doc.id));
-});
+  <label>Reason (if Rejected):</label>
+  <select id="reason_select" onchange="updatePreview()">
+    <option value="Copyright violation detected.">Copyright violation detected.</option>
+    <option value="Unauthorized sample usage.">Unauthorized sample usage.</option>
+    <option value="Remix too similar to original track.">Remix too similar to original track.</option>
+    <option value="EasySong license not obtained.">EasySong license not obtained.</option>
+    <option value="Cover / Corporate Art violates third-party rights.">Cover / Corporate Art violates third-party rights.</option>
+    <option value="Content violates platform rules.">Content violates platform rules.</option>
+    <option value="Track metadata invalid.">Track metadata invalid.</option>
+    <option value="Audio format / quality does not meet standards.">Audio format / quality does not meet standards.</option>
+    <option value="Track too similar to other releases.">Track too similar to other releases.</option>
+  </select>
 
-// ===== Listen user baru realtime =====
-db.collection('jobs').onSnapshot(snapshot=>{
-  snapshot.docChanges().forEach(change=>{
-    if(change.type === 'added') addUserToList(change.doc.id);
-  });
-});
+  <button onclick="sendEmail()">Send Email</button>
 
-// ===== Search user =====
-document.getElementById('searchUser').addEventListener('input', e=>{
-  const val = e.target.value.toLowerCase();
-  for(let userId in usersData){
-    usersData[userId].style.display = userId.toLowerCase().includes(val)?'flex':'none';
-  }
-});
+  <!-- Preview -->
+  <div id="preview"></div>
 
-// ===== Select user =====
-function selectUser(userId){
-  selectedUser = userId;
-  chatHeader.innerText = `User: ${userId}`;
-  chatContainer.innerHTML='';
-  usersData[userId].classList.remove('newMsg');
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    emailjs.init("PdAawBLVBYxfLmoZj"); // Your PUBLIC KEY
 
-  // Tampilkan job user
-  db.collection('jobs').doc(userId).get().then(doc=>{
-    if(doc.exists){
-      const data = doc.data();
-      const bubble = document.createElement('div');
-      bubble.className='chat-bubble jobBubble';
-      bubble.innerHTML=`
-        <b>Judul:</b> ${data.judul || '-'}<br>
-        <b>Style:</b> ${data.style || '-'}<br>
-        <b>Gender:</b> ${data.gender || '-'}<br>
-        <b>Status:</b> ${data.status || 'Memproses...'}<br>
-        <b>Job ID:</b> ${data.jobId || '-'}<br>
-        <b>Lirik:</b>
-        <div class="lyricsBox" id="lyrics-${data.jobId}">${data.lyrics || '-'}</div>
-        <button class="copyBtn" onclick="copyLyrics('${data.jobId}')">Copy Lirik</button>
+    function updatePreview() {
+      const artist_name = document.getElementById("artist_name").value || 'Artist Name';
+      const track_title = document.getElementById("track_title").value || 'Track Title';
+      const status = document.getElementById("status").value;
+      const reason = document.getElementById("reason_select").value;
+
+      const isApproved = status === 'Approved';
+      const opening_text = isApproved 
+        ? 'Congratulations! Your release has been approved.'
+        : 'After review by our team, the following release cannot be processed.';
+      const status_color = isApproved ? '#15803d' : '#b91c1c';
+      const reason_message = isApproved 
+        ? 'Your release is now available on all platforms.<br><br>'
+        : `<b>Reason for Rejection:</b> ${reason}<br><br>`;
+
+      document.getElementById("preview").innerHTML = `
+        <img src="https://i.imgur.com/eg7hX2C.jpeg" alt="Banner">
+        <div>Hello <b>${artist_name}</b>,</div><br>
+        <div>${opening_text}<br><br></div>
+        <div><b>Track Title:</b> ${track_title}<br>
+        <b>Artist:</b> ${artist_name}<br>
+        <b>Status:</b> <span style="color:${status_color}; font-weight:700;">${status}</span><br><br></div>
+        <div>${reason_message}</div>
+        <div style="font-size:11px; color:#6b7280; text-align:center; margin-top:20px;">
+          Dynotic Collective<br>
+          © 2025 Dynotic Collective. All rights reserved.
+        </div>
       `;
-      chatContainer.appendChild(bubble);
-    }
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  });
-
-  // Listen chat realtime
-  if(messageUnsub) messageUnsub();
-  messageUnsub = db.collection('chats').doc(userId).collection('messages')
-    .orderBy('timestamp','asc')
-    .onSnapshot(snapshot=>{
-      snapshot.docChanges().forEach(change=>{
-        if(change.type==='added'){
-          const data = change.doc.data();
-          const div = document.createElement('div');
-          div.classList.add('chat-bubble', data.type==='user'?'userBubble':'adminBubble');
-          div.innerHTML = data.message.replace(/\n/g,'<br>');
-          chatContainer.appendChild(div);
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-
-          // Double-click untuk hapus chat permanen
-          div.addEventListener('dblclick', ()=>{
-            if(confirm('Hapus pesan ini permanen?')){
-              db.collection('chats').doc(userId).collection('messages').doc(change.doc.id).delete()
-              .then(()=> div.remove())
-              .catch(err=> console.error(err));
-            }
-          });
-        }
-      });
-    });
-}
-
-// ===== Send Music Link =====
-function sendMusicLink(){
-  if(!selectedUser) return alert("Pilih user dulu!");
-  const judul = document.getElementById('judulInput').value.trim();
-  const model = document.getElementById('modelInput').value.trim();
-  const kredit = document.getElementById('kreditInput').value.trim();
-  const link = document.getElementById('linkInput').value.trim();
-
-  if(!judul || !model || !kredit || !link) return alert("Semua field wajib diisi!");
-
-  const msg = `
-<b>🎵 Musik Selesai Dibuat!</b><br>
-<b>Judul:</b> ${judul}<br>
-<b>Model:</b> ${model}<br>
-<b>Sisa Kredit:</b> ${kredit}<br>
-<b>Link:</b> <a href="${link}" target="_blank">${link}</a>
-  `;
-
-  db.collection('chats').doc(selectedUser).collection('messages').add({
-    message: msg,
-    type: 'admin',
-    timestamp: Date.now()
-  });
-
-  document.getElementById('judulInput').value='';
-  document.getElementById('modelInput').value='';
-  document.getElementById('kreditInput').value='';
-  document.getElementById('linkInput').value='';
-  alert("Link musik berhasil dikirim!");
-}
-
-// ===== Copy lirik =====
-function copyLyrics(jobId){
-  const lyricsDiv = document.getElementById(`lyrics-${jobId}`);
-  if(lyricsDiv){
-    navigator.clipboard.writeText(lyricsDiv.innerText).then(()=> alert('Lirik berhasil di-copy!'));
-  }
-}
-
-// ===== Hapus user + job + chat lengkap =====
-async function deleteUserCompletely(userId){
-  if(!confirm(`Hapus user ${userId} beserta semua job & chat?`)) return;
-
-  try {
-    // Hapus semua pesan di subcollection messages
-    const messagesRef = db.collection('chats').doc(userId).collection('messages');
-    const snapshot = await messagesRef.get();
-    const batch = db.batch();
-    snapshot.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-
-    // Hapus dokumen chat utama
-    await db.collection('chats').doc(userId).delete();
-
-    // Hapus dokumen job user
-    await db.collection('jobs').doc(userId).delete();
-
-    // Hapus user di sidebar
-    const div = document.getElementById('user-'+userId);
-    if(div) div.remove();
-
-    // Reset selected user jika yang dihapus sama
-    if(selectedUser === userId){
-      selectedUser = null;
-      chatContainer.innerHTML='';
-      chatHeader.innerText='Pilih user untuk lihat job & chat';
     }
 
-    // Hapus data lokal
-    delete usersData[userId];
+    function sendEmail() {
+      const to_email = document.getElementById("to_email").value;
+      const artist_name = document.getElementById("artist_name").value;
+      const track_title = document.getElementById("track_title").value;
+      const status = document.getElementById("status").value;
+      const reason = document.getElementById("reason_select").value;
+      const isApproved = status === 'Approved';
+      const opening_text = isApproved 
+        ? 'Congratulations! Your release has been approved.'
+        : 'After review by our team, the following release cannot be processed.';
+      const reason_message = isApproved ? 'Your release is now available on all platforms.' : reason;
 
-    alert(`User ${userId} beserta semua job & chat berhasil dihapus!`);
-  } catch(err){
-    console.error(err);
-    alert("Terjadi kesalahan saat menghapus user.");
-  }
-}
-</script>
+      if(!to_email || !artist_name || !track_title) {
+        alert("Please fill in Recipient Email, Artist Name, and Track Title.");
+        return;
+      }
+
+      emailjs.send("service_xotxirq", "template_3xk1kok", {
+        to_email: to_email,
+        artist_name: artist_name,
+        track_title: track_title,
+        status: status,
+        opening_text: opening_text,
+        reason_message: reason_message,
+        status_color: isApproved ? '#15803d' : '#b91c1c'
+      }).then(
+        () => alert("Email sent successfully!"),
+        err => alert("Error: " + err.text)
+      );
+    }
+
+    // Init preview
+    updatePreview();
+  </script>
+
 </body>
 </html>
