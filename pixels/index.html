@@ -4,110 +4,171 @@
   <meta charset="UTF-8">
   <title>Send Dynotic Email</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 20px; }
-    input, select, textarea, button { width: 100%; padding: 8px; margin-bottom: 12px; box-sizing: border-box; }
-    button { background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-    #preview { background: #fff; padding: 12px; max-width: 600px; margin-top: 20px; border: 1px solid #ddd; }
-    #preview img { width: 100%; height: auto; display: block; margin-bottom: 12px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      padding: 20px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #preview {
+      background: #ffffff;
+      padding: 12px;
+      max-width: 600px;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+    }
+    #preview img {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
 
-  <h2>Send Dynotic Email</h2>
+<h2>Send Dynotic Email</h2>
 
-  <!-- Form -->
-  <label>Recipient Email:</label>
-  <input type="email" id="to_email" placeholder="example@email.com">
+<label>Recipient Email</label>
+<input type="email" id="to_email" placeholder="artist@email.com">
 
-  <label>Artist Name:</label>
-  <input type="text" id="artist_name" placeholder="Artist Name">
+<label>Artist Name</label>
+<input type="text" id="artist_name" placeholder="Artist Name">
 
-  <label>Track Title:</label>
-  <input type="text" id="track_title" placeholder="Track Title">
+<label>Track Title</label>
+<input type="text" id="track_title" placeholder="Track Title">
 
-  <label>Status:</label>
-  <select id="status" onchange="updatePreview()">
-    <option value="Approved">Approved</option>
-    <option value="Rejected">Rejected</option>
-  </select>
+<label>Status</label>
+<select id="status" onchange="updatePreview()">
+  <option value="Approved">Approved</option>
+  <option value="Rejected">Rejected</option>
+</select>
 
-  <label>Reason (if Rejected):</label>
-  <textarea id="reason_input" placeholder="Type rejection reason here..." rows="3"></textarea>
+<label>Smartlink URL (Approved only)</label>
+<input type="url" id="smartlink" placeholder="https://smartlink.example" oninput="updatePreview()">
 
-  <button onclick="sendEmail()">Send Email</button>
+<label>Reason (if Rejected)</label>
+<textarea id="reason_input" rows="3" placeholder="Reason..." oninput="updatePreview()"></textarea>
 
-  <!-- Preview -->
-  <div id="preview"></div>
+<button onclick="sendEmail()">Send Email</button>
 
-  <!-- EmailJS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>
-    emailjs.init("PdAawBLVBYxfLmoZj"); // Your PUBLIC KEY
+<div id="preview"></div>
 
-    function updatePreview() {
-      const artist_name = document.getElementById("artist_name").value || 'Artist Name';
-      const track_title = document.getElementById("track_title").value || 'Track Title';
-      const status = document.getElementById("status").value;
-      const reason = document.getElementById("reason_input").value;
+<!-- EMAILJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+emailjs.init("PdAawBLVBYxfLmoZj"); // PUBLIC KEY
 
-      const isApproved = status === 'Approved';
-      const opening_text = isApproved 
-        ? 'Congratulations! Your release has been approved.'
-        : 'After review by our team, the following release cannot be processed.';
-      const status_color = isApproved ? '#15803d' : '#b91c1c';
-      const reason_message = isApproved 
-        ? 'Your release is now available on all platforms.<br><br>'
-        : `<b>Reason for Rejection:</b> ${reason}<br><br>`;
+function buildSmartlinkButton(link) {
+  return `
+  <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:20px auto;">
+    <tr>
+      <td bgcolor="#7c3aed" style="border-radius:6px;">
+        <a href="${link}" target="_blank"
+          style="display:inline-block;padding:12px 26px;
+          font-family:Arial;font-size:14px;font-weight:600;
+          color:#ffffff;text-decoration:none;">
+           Click here
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
 
-      document.getElementById("preview").innerHTML = `
-        <img src="https://i.imgur.com/eg7hX2C.jpeg" alt="Banner">
-        <div>Hello <b>${artist_name}</b>,</div><br>
-        <div>${opening_text}<br><br></div>
-        <div><b>Track Title:</b> ${track_title}<br>
-        <b>Artist:</b> ${artist_name}<br>
-        <b>Status:</b> <span style="color:${status_color}; font-weight:700;">${status}</span><br><br></div>
-        <div>${reason_message}</div>
-        <div style="font-size:11px; color:#6b7280; text-align:center; margin-top:20px;">
-          Dynotic Collective<br>
-          © 2025 Dynotic Collective. All rights reserved.
-        </div>
-      `;
-    }
+function updatePreview() {
+  const artist = document.getElementById("artist_name").value || "Artist Name";
+  const track = document.getElementById("track_title").value || "Track Title";
+  const status = document.getElementById("status").value;
+  const reason = document.getElementById("reason_input").value;
+  const smartlink = document.getElementById("smartlink").value;
 
-    function sendEmail() {
-      const to_email = document.getElementById("to_email").value;
-      const artist_name = document.getElementById("artist_name").value;
-      const track_title = document.getElementById("track_title").value;
-      const status = document.getElementById("status").value;
-      const reason = document.getElementById("reason_input").value;
-      const isApproved = status === 'Approved';
-      const opening_text = isApproved 
-        ? 'Congratulations! Your release has been approved.'
-        : 'After review by our team, the following release cannot be processed.';
-      const reason_message = isApproved ? 'Your release is now available on all platforms.' : reason;
+  const approved = status === "Approved";
+  const opening = approved
+    ? "Congratulations! Your release has been approved."
+    : "After review by our team, the following release cannot be processed.";
 
-      if(!to_email || !artist_name || !track_title) {
-        alert("Please fill in Recipient Email, Artist Name, and Track Title.");
-        return;
-      }
+  const statusColor = approved ? "#15803d" : "#b91c1c";
 
-      emailjs.send("service_xotxirq", "template_3xk1kok", {
-        to_email: to_email,
-        artist_name: artist_name,
-        track_title: track_title,
-        status: status,
-        opening_text: opening_text,
-        reason_message: reason_message,
-        status_color: isApproved ? '#15803d' : '#b91c1c'
-      }).then(
-        () => alert("Email sent successfully!"),
-        err => alert("Error: " + err.text)
-      );
-    }
+  const smartlinkButton = approved && smartlink
+    ? buildSmartlinkButton(smartlink)
+    : "";
 
-    // Init preview
-    updatePreview();
-  </script>
+  const reasonMessage = approved
+    ? "Your release is now available on all platforms."
+    : `<b>Reason for Rejection:</b> ${reason}`;
+
+  document.getElementById("preview").innerHTML = `
+    <img src="https://i.imgur.com/eg7hX2C.jpeg">
+    <div>Hello <b>${artist}</b>,</div><br>
+    <div>${opening}<br><br></div>
+    <div>
+      <b>Track Title:</b> ${track}<br>
+      <b>Artist:</b> ${artist}<br>
+      <b>Status:</b>
+      <span style="color:${statusColor};font-weight:700;">${status}</span>
+    </div>
+    ${smartlinkButton}
+    <div style="margin-top:12px;">${reasonMessage}</div>
+    <div style="font-size:11px;color:#6b7280;text-align:center;margin-top:20px;">
+      Dynotic Collective<br>
+      © 2025 Dynotic Collective
+    </div>
+  `;
+}
+
+function sendEmail() {
+  const to_email = document.getElementById("to_email").value;
+  const artist = document.getElementById("artist_name").value;
+  const track = document.getElementById("track_title").value;
+  const status = document.getElementById("status").value;
+  const reason = document.getElementById("reason_input").value;
+  const smartlink = document.getElementById("smartlink").value;
+
+  if (!to_email || !artist || !track) {
+    alert("Required fields missing");
+    return;
+  }
+
+  const approved = status === "Approved";
+
+  const smartlink_button = approved && smartlink
+    ? buildSmartlinkButton(smartlink)
+    : "";
+
+  emailjs.send("service_xotxirq", "template_3xk1kok", {
+    to_email,
+    artist_name: artist,
+    track_title: track,
+    status,
+    opening_text: approved
+      ? "Congratulations! Your release has been approved."
+      : "After review by our team, the following release cannot be processed.",
+    reason_message: approved
+      ? "Your release is now available on all platforms."
+      : reason,
+    status_color: approved ? "#15803d" : "#b91c1c",
+    smartlink_button
+  }).then(
+    () => alert("Email sent successfully!"),
+    err => alert("Error: " + err.text)
+  );
+}
+
+updatePreview();
+</script>
 
 </body>
 </html>
